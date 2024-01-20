@@ -12,9 +12,9 @@ from urllib.parse import urlparse
 import os
 import pandas as pd
 import tiktoken
-import openai
+from openai import OpenAI
 import numpy as np
-from openai.embeddings_utils import distances_from_embeddings, cosine_similarity
+from embeddings_utils import distances_from_embeddings, cosine_similarity
 from ast import literal_eval
 
 # Regex pattern to match a URL
@@ -26,6 +26,8 @@ HTTP_URL_PATTERN = r'^http[s]{0,1}://.+$'
 # Define root domain to crawl
 domain = "openai.com"
 full_url = "https://openai.com/"
+
+client = OpenAI()
 
 # Create a class to parse the HTML and get the hyperlinks
 class HyperlinkParser(HTMLParser):
@@ -166,7 +168,7 @@ def crawl(url):
                 queue.append(link)
                 seen.add(link)
 
-crawl(full_url)
+#crawl(full_url)
 
 ################################################################################
 ### Step 5
@@ -186,6 +188,8 @@ def remove_newlines(serie):
 
 # Create a list to store the text files
 texts=[]
+
+print("*********Current Working Directory:", os.getcwd())
 
 # Get all the text files in the text directory
 for file in os.listdir("text/" + domain + "/"):
@@ -299,7 +303,7 @@ df.n_tokens.hist()
 # Note that you may run into rate limit issues depending on how many files you try to embed
 # Please check out our rate limit guide to learn more on how to handle this: https://platform.openai.com/docs/guides/rate-limits
 
-df['embeddings'] = df.text.apply(lambda x: openai.Embedding.create(input=x, engine='text-embedding-ada-002')['data'][0]['embedding'])
+df['embeddings'] = df.text.apply(lambda x: client.embeddings.create(input=x, model='text-embedding-ada-002').data[0].embedding)
 df.to_csv('processed/embeddings.csv')
 df.head()
 
@@ -324,7 +328,7 @@ def create_context(
     """
 
     # Get the embeddings for the question
-    q_embeddings = openai.Embedding.create(input=question, engine='text-embedding-ada-002')['data'][0]['embedding']
+    q_embeddings = client.embeddings.create(input=question, engine='text-embedding-ada-002')['data'][0]['embedding']
 
     # Get the distances from the embeddings
     df['distances'] = distances_from_embeddings(q_embeddings, df['embeddings'].values, distance_metric='cosine')
@@ -375,7 +379,7 @@ def answer_question(
 
     try:
         # Create a completions using the questin and context
-        response = openai.Completion.create(
+        response = client.chat.completions.create(
             prompt=f"Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\nContext: {context}\n\n---\n\nQuestion: {question}\nAnswer:",
             temperature=0,
             max_tokens=max_tokens,

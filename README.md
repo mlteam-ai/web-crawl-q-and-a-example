@@ -25,5 +25,5 @@ Open a terminal window, change your working directory to [web-crawl-q-and-a](.),
 # Execution
 To start your vocal assistant run the following command in [web-crawl-q-and-a](.) folder.
 ```sh
-    python3 web-qa.py
+    python3 main.py
 ```

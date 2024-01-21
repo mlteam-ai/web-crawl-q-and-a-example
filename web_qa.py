@@ -20,9 +20,6 @@ from ast import literal_eval
 # Regex pattern to match a URL
 HTTP_URL_PATTERN = r'^http[s]{0,1}://.+$'
 
-# Define OpenAI api_key
-# openai.api_key = '<Your API Key>'
-
 # Define root domain to crawl
 domain = "openai.com"
 full_url = "https://openai.com/"
@@ -30,7 +27,7 @@ full_url = "https://openai.com/"
 client = OpenAI()
 
 # Create a class to parse the HTML and get the hyperlinks
-class HyperlinkParser(HTMLParser):
+class __HyperlinkParser(HTMLParser):
     def __init__(self):
         super().__init__()
         # Create a list to store the hyperlinks
@@ -44,12 +41,8 @@ class HyperlinkParser(HTMLParser):
         if tag == "a" and "href" in attrs:
             self.hyperlinks.append(attrs["href"])
 
-################################################################################
-### Step 2
-################################################################################
-
 # Function to get the hyperlinks from a URL
-def get_hyperlinks(url):
+def __get_hyperlinks(url):
     
     # Try to open the URL and read the HTML
     try:
@@ -67,19 +60,15 @@ def get_hyperlinks(url):
         return []
 
     # Create the HTML Parser and then Parse the HTML to get hyperlinks
-    parser = HyperlinkParser()
+    parser = __HyperlinkParser()
     parser.feed(html)
 
     return parser.hyperlinks
 
-################################################################################
-### Step 3
-################################################################################
-
 # Function to get the hyperlinks from a URL that are within the same domain
-def get_domain_hyperlinks(local_domain, url):
+def __get_domain_hyperlinks(local_domain, url):
     clean_links = []
-    for link in set(get_hyperlinks(url)):
+    for link in set(__get_hyperlinks(url)):
         clean_link = None
 
         # If the link is a URL, check if it is within the same domain
@@ -108,11 +97,6 @@ def get_domain_hyperlinks(local_domain, url):
 
     # Return the list of hyperlinks that are within the same domain
     return list(set(clean_links))
-
-
-################################################################################
-### Step 4
-################################################################################
 
 def crawl(url):
     # Parse the URL and get the domain
@@ -168,71 +152,15 @@ def crawl(url):
                 queue.append(link)
                 seen.add(link)
 
-#crawl(full_url)
-
-################################################################################
-### Step 5
-################################################################################
-
-def remove_newlines(serie):
+def __remove_newlines(serie):
     serie = serie.str.replace('\n', ' ')
     serie = serie.str.replace('\\n', ' ')
     serie = serie.str.replace('  ', ' ')
     serie = serie.str.replace('  ', ' ')
     return serie
 
-
-################################################################################
-### Step 6
-################################################################################
-
-# Create a list to store the text files
-texts=[]
-
-print("*********Current Working Directory:", os.getcwd())
-
-# Get all the text files in the text directory
-for file in os.listdir("text/" + domain + "/"):
-
-    # Open the file and read the text
-    with open("text/" + domain + "/" + file, "r", encoding="UTF-8") as f:
-        text = f.read()
-
-        # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
-        texts.append((file[11:-4].replace('-',' ').replace('_', ' ').replace('#update',''), text))
-
-# Create a dataframe from the list of texts
-df = pd.DataFrame(texts, columns = ['fname', 'text'])
-
-# Set the text column to be the raw text with the newlines removed
-df['text'] = df.fname + ". " + remove_newlines(df.text)
-df.to_csv('processed/scraped.csv')
-df.head()
-
-################################################################################
-### Step 7
-################################################################################
-
-# Load the cl100k_base tokenizer which is designed to work with the ada-002 model
-tokenizer = tiktoken.get_encoding("cl100k_base")
-
-df = pd.read_csv('processed/scraped.csv', index_col=0)
-df.columns = ['title', 'text']
-
-# Tokenize the text and save the number of tokens to a new column
-df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-
-# Visualize the distribution of the number of tokens per row using a histogram
-df.n_tokens.hist()
-
-################################################################################
-### Step 8
-################################################################################
-
-max_tokens = 500
-
 # Function to split the text into chunks of a maximum number of tokens
-def split_into_many(text, max_tokens = max_tokens):
+def __split_into_many(text, max_tokens, tokenizer):
 
     # Split the text into sentences
     sentences = text.split('. ')
@@ -269,66 +197,112 @@ def split_into_many(text, max_tokens = max_tokens):
         chunks.append(". ".join(chunk) + ".")
 
     return chunks
-    
-
-shortened = []
-
-# Loop through the dataframe
-for row in df.iterrows():
-
-    # If the text is None, go to the next row
-    if row[1]['text'] is None:
-        continue
-
-    # If the number of tokens is greater than the max number of tokens, split the text into chunks
-    if row[1]['n_tokens'] > max_tokens:
-        shortened += split_into_many(row[1]['text'])
-    
-    # Otherwise, add the text to the list of shortened texts
-    else:
-        shortened.append( row[1]['text'] )
 
 ################################################################################
-### Step 9
+### Step 6
 ################################################################################
 
-df = pd.DataFrame(shortened, columns = ['text'])
-df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-df.n_tokens.hist()
+def createScrapedCsv():
+    # Create a list to store the text files
+    texts=[]
 
-################################################################################
-### Step 10
-################################################################################
+    # Get all the text files in the text directory
+    for file in os.listdir("text/" + domain + "/"):
 
-# Note that you may run into rate limit issues depending on how many files you try to embed
-# Please check out our rate limit guide to learn more on how to handle this: https://platform.openai.com/docs/guides/rate-limits
+        # Open the file and read the text
+        with open("text/" + domain + "/" + file, "r", encoding="UTF-8") as f:
+            text = f.read()
 
-df['embeddings'] = df.text.apply(lambda x: client.embeddings.create(input=x, model='text-embedding-ada-002').data[0].embedding)
-df.to_csv('processed/embeddings.csv')
-df.head()
+            # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
+            texts.append((file[11:-4].replace('-',' ').replace('_', ' ').replace('#update',''), text))
 
-################################################################################
-### Step 11
-################################################################################
+    # Create a dataframe from the list of texts
+    df = pd.DataFrame(texts, columns = ['fname', 'text'])
 
-df=pd.read_csv('processed/embeddings.csv', index_col=0)
-df['embeddings'] = df['embeddings'].apply(literal_eval).apply(np.array)
+    # Set the text column to be the raw text with the newlines removed
+    df['text'] = df.fname + ". " + __remove_newlines(df.text)
+    df.to_csv('processed/scraped.csv')
+    df.head()
 
-df.head()
+def createEmbeddingsCsv(max_tokens = 500):
+    ################################################################################
+    ### Step 7
+    ################################################################################
+
+    # Load the cl100k_base tokenizer which is designed to work with the ada-002 model
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+
+    df = pd.read_csv('processed/scraped.csv', index_col=0)
+    df.columns = ['title', 'text']
+
+    # Tokenize the text and save the number of tokens to a new column
+    df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
+
+    # Visualize the distribution of the number of tokens per row using a histogram
+    df.n_tokens.hist()
+
+    ################################################################################
+    ### Step 8
+    ################################################################################
+
+    shortened = []
+
+    # Loop through the dataframe
+    for row in df.iterrows():
+
+        # If the text is None, go to the next row
+        if row[1]['text'] is None:
+            continue
+
+        # If the number of tokens is greater than the max number of tokens, split the text into chunks
+        if row[1]['n_tokens'] > max_tokens:
+            shortened += __split_into_many(row[1]['text'], max_tokens, tokenizer)
+        
+        # Otherwise, add the text to the list of shortened texts
+        else:
+            shortened.append( row[1]['text'] )
+
+    ################################################################################
+    ### Step 9
+    ################################################################################
+
+    df = pd.DataFrame(shortened, columns = ['text'])
+    df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
+    df.n_tokens.hist()
+
+    ################################################################################
+    ### Step 10
+    ################################################################################
+
+    # Note that you may run into rate limit issues depending on how many files you try to embed
+    # Please check out our rate limit guide to learn more on how to handle this: https://platform.openai.com/docs/guides/rate-limits
+
+    df['embeddings'] = df.text.apply(lambda x: client.embeddings.create(input=x, model='text-embedding-ada-002').data[0].embedding)
+    df.to_csv('processed/embeddings.csv')
+    df.head()
+
+
+def getEmbeddingsDataFrame():
+    ################################################################################
+    ### Step 11
+    ################################################################################
+
+    df=pd.read_csv('processed/embeddings.csv', index_col=0)
+    df['embeddings'] = df['embeddings'].apply(literal_eval).apply(np.array)
+    df.head()
+    return df
 
 ################################################################################
 ### Step 12
 ################################################################################
 
-def create_context(
-    question, df, max_len=1800, size="ada"
-):
+def __create_context(question, df, max_len=1800, size="ada"):
     """
     Create a context for a question by finding the most similar context from the dataframe
     """
 
     # Get the embeddings for the question
-    q_embeddings = client.embeddings.create(input=question, engine='text-embedding-ada-002')['data'][0]['embedding']
+    q_embeddings = client.embeddings.create(input=question, model='text-embedding-ada-002').data[0].embedding
 
     # Get the distances from the embeddings
     df['distances'] = distances_from_embeddings(q_embeddings, df['embeddings'].values, distance_metric='cosine')
@@ -355,18 +329,17 @@ def create_context(
 
 def answer_question(
     df,
-    model="text-davinci-003",
+    model="gpt-3.5-turbo",
     question="Am I allowed to publish model outputs to Twitter, without a human review?",
     max_len=1800,
     size="ada",
     debug=False,
     max_tokens=150,
-    stop_sequence=None
-):
+    stop_sequence=None):
     """
     Answer a question based on the most similar context from the dataframe texts
     """
-    context = create_context(
+    context = __create_context(
         question,
         df,
         max_len=max_len,
@@ -378,9 +351,13 @@ def answer_question(
         print("\n\n")
 
     try:
-        # Create a completions using the questin and context
+        # Create a completions using the question and context
         response = client.chat.completions.create(
-            prompt=f"Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\nContext: {context}\n\n---\n\nQuestion: {question}\nAnswer:",
+            messages=[
+                {"role": "system", "content": f"Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\n"},
+                {"role": "system", "content": f"Context: {context}\n\n---\n\n"},
+                {"role": "user", "content": f"Question: {question}\nAnswer:"}
+            ],
             temperature=0,
             max_tokens=max_tokens,
             top_p=1,
@@ -389,15 +366,7 @@ def answer_question(
             stop=stop_sequence,
             model=model,
         )
-        return response["choices"][0]["text"].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         print(e)
         return ""
-
-################################################################################
-### Step 13
-################################################################################
-
-print(answer_question(df, question="What day is it?", debug=False))
-
-print(answer_question(df, question="What is our newest embeddings model?"))

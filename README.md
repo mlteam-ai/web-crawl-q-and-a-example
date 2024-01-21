@@ -1,6 +1,6 @@
 # Web  Q&A with Embeddings
 
-Learn how to crawl your website and build a Q/A bot with the OpenAI API. You can find the full tutorial in the [OpenAI documentation](https://platform.openai.com/docs/tutorials/web-qa-embeddings).
+Learn how to crawl your website and build a Q/A bot with the OpenAI API. You can find the full tutorial in the [OpenAI documentation](https://platform.openai.com/docs/tutorials/web-qa-embeddings). However official tutorial is not up-to-date and compatible with Ptyhon 3.12.1 and latest [openai python library](https://github.com/openai/openai-python) 1.9.0 (as of 21 January 2024).
 
 # Overview
 This tutorial walks through a simple example of crawling a website (in this example, the OpenAI website), turning the crawled pages into embeddings using the Embeddings API, and then creating a basic search functionality that allows a user to ask questions about the embedded information. This is intended to be a starting point for more sophisticated applications that make use of custom knowledge bases.

@@ -21,8 +21,7 @@ from ast import literal_eval
 HTTP_URL_PATTERN = r'^http[s]{0,1}://.+$'
 
 # Define root domain to crawl
-domain = "openai.com"
-full_url = "https://openai.com/"
+local_domain = "openai.com"
 
 client = OpenAI()
 
@@ -147,7 +146,7 @@ def crawl(url):
             print("Unable to parse page " + url)
 
         # Get the hyperlinks from the URL and add them to the queue
-        for link in get_domain_hyperlinks(local_domain, url):
+        for link in __get_domain_hyperlinks(local_domain, url):
             if link not in seen:
                 queue.append(link)
                 seen.add(link)
@@ -207,10 +206,10 @@ def createScrapedCsv():
     texts=[]
 
     # Get all the text files in the text directory
-    for file in os.listdir("text/" + domain + "/"):
+    for file in os.listdir("text/" + local_domain + "/"):
 
         # Open the file and read the text
-        with open("text/" + domain + "/" + file, "r", encoding="UTF-8") as f:
+        with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
             text = f.read()
 
             # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.

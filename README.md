@@ -6,7 +6,7 @@ Learn how to crawl your website and build a Q/A bot with the OpenAI API. You can
 This tutorial walks through a simple example of crawling a website (in this example, the OpenAI website), turning the crawled pages into embeddings using the Embeddings API, and then creating a basic search functionality that allows a user to ask questions about the embedded information. This is intended to be a starting point for more sophisticated applications that make use of custom knowledge bases.
 
 # Installation
-This project is tested in Python 3.12.1 and openai python libarary 1.9.0.
+This project is tested in Python 3.12.1 and openai python library 1.9.0.
 
 ## 1. Setting up the '.env' file
 You need to subscribe to [OpenAI](https://platform.openai.com/docs/quickstart/account-setup), configure your [billing settings](https://platform.openai.com/account/billing/overview), get your API key and create an '.env' file containing 'OPENAI_API_KEY'.

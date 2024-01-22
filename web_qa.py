@@ -1,7 +1,3 @@
-################################################################################
-### Step 1
-################################################################################
-
 import requests
 import re
 import urllib.request
@@ -41,7 +37,7 @@ class __HyperlinkParser(HTMLParser):
             self.hyperlinks.append(attrs["href"])
 
 # Function to get the hyperlinks from a URL
-def __get_hyperlinks(url):
+def _get_hyperlinks(url):
     
     # Try to open the URL and read the HTML
     try:
@@ -65,9 +61,9 @@ def __get_hyperlinks(url):
     return parser.hyperlinks
 
 # Function to get the hyperlinks from a URL that are within the same domain
-def __get_domain_hyperlinks(local_domain, url):
+def _get_domain_hyperlinks(local_domain, url):
     clean_links = []
-    for link in set(__get_hyperlinks(url)):
+    for link in set(_get_hyperlinks(url)):
         clean_link = None
 
         # If the link is a URL, check if it is within the same domain
@@ -98,6 +94,8 @@ def __get_domain_hyperlinks(local_domain, url):
     return list(set(clean_links))
 
 def crawl(url):
+    print(f"Crawling the web site: {url}...")
+
     # Parse the URL and get the domain
     local_domain = urlparse(url).netloc
 
@@ -146,12 +144,13 @@ def crawl(url):
             print("Unable to parse page " + url)
 
         # Get the hyperlinks from the URL and add them to the queue
-        for link in __get_domain_hyperlinks(local_domain, url):
+        for link in _get_domain_hyperlinks(local_domain, url):
             if link not in seen:
                 queue.append(link)
                 seen.add(link)
+    print("Crawling is completed.")
 
-def __remove_newlines(serie):
+def _remove_newlines(serie):
     serie = serie.str.replace('\n', ' ')
     serie = serie.str.replace('\\n', ' ')
     serie = serie.str.replace('  ', ' ')
@@ -159,7 +158,7 @@ def __remove_newlines(serie):
     return serie
 
 # Function to split the text into chunks of a maximum number of tokens
-def __split_into_many(text, max_tokens, tokenizer):
+def _split_into_many(text, max_tokens, tokenizer):
 
     # Split the text into sentences
     sentences = text.split('. ')
@@ -197,11 +196,8 @@ def __split_into_many(text, max_tokens, tokenizer):
 
     return chunks
 
-################################################################################
-### Step 6
-################################################################################
-
 def createScrapedCsv():
+    print("Creating scraped.csv file...")
     # Create a list to store the text files
     texts=[]
 
@@ -219,14 +215,13 @@ def createScrapedCsv():
     df = pd.DataFrame(texts, columns = ['fname', 'text'])
 
     # Set the text column to be the raw text with the newlines removed
-    df['text'] = df.fname + ". " + __remove_newlines(df.text)
+    df['text'] = df.fname + ". " + _remove_newlines(df.text)
     df.to_csv('processed/scraped.csv')
     df.head()
+    print("File scraped.csv is created.")
 
 def createEmbeddingsCsv(max_tokens = 500):
-    ################################################################################
-    ### Step 7
-    ################################################################################
+    print("Creating embeddings.csv file...")
 
     # Load the cl100k_base tokenizer which is designed to work with the ada-002 model
     tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -240,10 +235,6 @@ def createEmbeddingsCsv(max_tokens = 500):
     # Visualize the distribution of the number of tokens per row using a histogram
     df.n_tokens.hist()
 
-    ################################################################################
-    ### Step 8
-    ################################################################################
-
     shortened = []
 
     # Loop through the dataframe
@@ -255,23 +246,15 @@ def createEmbeddingsCsv(max_tokens = 500):
 
         # If the number of tokens is greater than the max number of tokens, split the text into chunks
         if row[1]['n_tokens'] > max_tokens:
-            shortened += __split_into_many(row[1]['text'], max_tokens, tokenizer)
+            shortened += _split_into_many(row[1]['text'], max_tokens, tokenizer)
         
         # Otherwise, add the text to the list of shortened texts
         else:
             shortened.append( row[1]['text'] )
 
-    ################################################################################
-    ### Step 9
-    ################################################################################
-
     df = pd.DataFrame(shortened, columns = ['text'])
     df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
     df.n_tokens.hist()
-
-    ################################################################################
-    ### Step 10
-    ################################################################################
 
     # Note that you may run into rate limit issues depending on how many files you try to embed
     # Please check out our rate limit guide to learn more on how to handle this: https://platform.openai.com/docs/guides/rate-limits
@@ -279,23 +262,16 @@ def createEmbeddingsCsv(max_tokens = 500):
     df['embeddings'] = df.text.apply(lambda x: client.embeddings.create(input=x, model='text-embedding-ada-002').data[0].embedding)
     df.to_csv('processed/embeddings.csv')
     df.head()
-
+    print("File embeddings.csv is created.")
 
 def getEmbeddingsDataFrame():
-    ################################################################################
-    ### Step 11
-    ################################################################################
 
     df=pd.read_csv('processed/embeddings.csv', index_col=0)
     df['embeddings'] = df['embeddings'].apply(literal_eval).apply(np.array)
     df.head()
     return df
 
-################################################################################
-### Step 12
-################################################################################
-
-def __create_context(question, df, max_len=1800, size="ada"):
+def _create_context(question, df, max_len=1800, size="ada"):
     """
     Create a context for a question by finding the most similar context from the dataframe
     """
@@ -338,7 +314,8 @@ def answer_question(
     """
     Answer a question based on the most similar context from the dataframe texts
     """
-    context = __create_context(
+    print(f"Creating the context for the question: {question}...")
+    context = _create_context(
         question,
         df,
         max_len=max_len,
@@ -348,7 +325,9 @@ def answer_question(
     if debug:
         print("Context:\n" + context)
         print("\n\n")
+    print("Context is created for the question.")
 
+    print("Getting the answer from GPT...")
     try:
         # Create a completions using the question and context
         response = client.chat.completions.create(
@@ -365,7 +344,8 @@ def answer_question(
             stop=stop_sequence,
             model=model,
         )
+        print("Got the answer from GPT.")
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(e)
+        print("There was an error, could not get the answer from GPT:", e)
         return ""

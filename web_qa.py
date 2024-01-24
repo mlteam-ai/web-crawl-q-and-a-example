@@ -217,8 +217,7 @@ def createScrapedCsv():
     # Set the text column to be the raw text with the newlines removed
     df['text'] = df.fname + ". " + _remove_newlines(df.text)
     df.to_csv('processed/scraped.csv')
-    df.head()
-    print("File scraped.csv is created.")
+    print(f"File scraped.csv is created.\n{df.head(2)}")
 
 def createEmbeddingsCsv(max_tokens = 500):
     print("Creating embeddings.csv file...")
@@ -231,9 +230,6 @@ def createEmbeddingsCsv(max_tokens = 500):
 
     # Tokenize the text and save the number of tokens to a new column
     df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-
-    # Visualize the distribution of the number of tokens per row using a histogram
-    df.n_tokens.hist()
 
     shortened = []
 
@@ -254,21 +250,19 @@ def createEmbeddingsCsv(max_tokens = 500):
 
     df = pd.DataFrame(shortened, columns = ['text'])
     df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-    df.n_tokens.hist()
 
     # Note that you may run into rate limit issues depending on how many files you try to embed
     # Please check out our rate limit guide to learn more on how to handle this: https://platform.openai.com/docs/guides/rate-limits
 
     df['embeddings'] = df.text.apply(lambda x: client.embeddings.create(input=x, model='text-embedding-ada-002').data[0].embedding)
     df.to_csv('processed/embeddings.csv')
-    df.head()
-    print("File embeddings.csv is created.")
+    print(f"File embeddings.csv is created.\n{df.head(2)}")
 
 def getEmbeddingsDataFrame():
 
     df=pd.read_csv('processed/embeddings.csv', index_col=0)
     df['embeddings'] = df['embeddings'].apply(literal_eval).apply(np.array)
-    df.head()
+    print(f"File embeddings.csv is read.\n{df.head(2)}")
     return df
 
 def _create_context(question, df, max_len=1800, size="ada"):

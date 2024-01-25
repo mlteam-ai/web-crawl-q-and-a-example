@@ -10,7 +10,7 @@ import pandas as pd
 import tiktoken
 from openai import OpenAI
 import numpy as np
-from embeddings_utils import distances_from_embeddings, cosine_similarity
+from scipy.spatial.distance import cosine
 from ast import literal_eval
 
 # Regex pattern to match a URL
@@ -265,6 +265,13 @@ def getEmbeddingsDataFrame():
     print(f"File embeddings.csv is read.\n{df.head(2)}")
     return df
 
+def _distances_from_embeddings(query_embedding, embeddings):
+    distances = [
+        cosine(query_embedding, embedding)
+        for embedding in embeddings
+    ]
+    return distances
+
 def _create_context(question, df, max_len=1800, size="ada"):
     """
     Create a context for a question by finding the most similar context from the dataframe
@@ -274,7 +281,7 @@ def _create_context(question, df, max_len=1800, size="ada"):
     q_embeddings = client.embeddings.create(input=question, model='text-embedding-ada-002').data[0].embedding
 
     # Get the distances from the embeddings
-    df['distances'] = distances_from_embeddings(q_embeddings, df['embeddings'].values, distance_metric='cosine')
+    df['distances'] = _distances_from_embeddings(q_embeddings, df['embeddings'].values)
 
 
     returns = []
